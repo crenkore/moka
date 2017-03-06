@@ -42,6 +42,9 @@ let p = new Promise((resolve, reject) => {
     })
 });
 
+let arr = [];
+let activeProcNum = 0;
+
 let handler = (inputArrs) => {
     let k = 0;
     while (k < inputArrs.length) {
@@ -51,16 +54,25 @@ let handler = (inputArrs) => {
             if ('' === item) break;
             once_inputs.push(item);
         }
-        if (once_inputs.length) {
-            if (line_num > 1) {
-                child_process.exec(`${command || 'echo '} ${once_inputs.join(' ')}`, (error, stdout, stderr) => {
-                    process.stdout.write(stdout);
-                });
-            } else {
-                process.stdout.write(child_process.execSync(`${command || 'echo '} ${once_inputs.join(' ')}`));
-            }
-        }
+        arr.push(once_inputs);
         k += line_num;
+    }
+    for (let ar of arr) {
+        /*while (activeProcNum == proc_num) {
+            if (activeProcNum != proc_num) break;
+        }*/
+        if (!ar.length) continue;
+        if (proc_num == 1) {
+            process.stdout.write(child_process.execSync(`${command || 'echo '} ${ar.join(' ')}`));
+            continue;
+        }
+        let workerProcess = child_process.exec(`${command || 'echo '} ${ar.join(' ')}`, (error, stdout, stderr) => {
+            process.stdout.write(stdout);
+        });
+        workerProcess.on('close', (code) => {
+            --activeProcNum;
+        });
+        ++activeProcNum;
     }
 };
 
