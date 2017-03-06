@@ -33,20 +33,20 @@ for (let i = 2; i < process.argv.length; i++) {
 }
 
 //处理
-let p = new Promise((resolve, reject) => {
-    process.stdin.on('data', (data) => {
-        inputs = data.toString('utf8').split(/\s+/);
-    });
-    process.stdin.on('end', () => {
-        resolve(inputs);
-    })
+let onceHandle = [];
+process.stdin.on('data', (data) => {
+    inputs = data.toString('utf8').split(/\s+/);
+    inputs.filter(item=>item !== '').forEach(item=>onceHandle.push(item));
+    if (onceHandle.length >= line_num) {
+        handler(onceHandle);
+        onceHandle = [];
+    }
 });
-
-let arr = [];
-let activeProcNum = 0;
 
 let handler = (inputArrs) => {
     let k = 0;
+    let arr = [];
+    let activeProcNum = 0;
     while (k < inputArrs.length) {
         let once_inputs = [];
         for (let j = k; j < k + line_num; j++) {
@@ -75,7 +75,3 @@ let handler = (inputArrs) => {
         ++activeProcNum;
     }
 };
-
-p.then((inputArrs) => {
-    handler(inputArrs);
-});
