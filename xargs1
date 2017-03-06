@@ -14,13 +14,18 @@ for (let i = 2; i < process.argv.length; i++) {
         let optarg = process.argv[++i];
         switch (a) {
             case '-n':
-                if (optarg < 1) { //TODO
-                    console.error('invalid option argument');
+                if (isNaN(optarg) || optarg <= 0) { //TODO
+                    console.error('xargs: illegal argument count');
+                    process.exit(1);
                 }
                 line_num = parseInt(optarg);
                 break;
             case '-P':
                 proc_num = parseInt(optarg);
+                if (isNaN(proc_num) || proc_num <= 0) {
+                    console.error('xargs: max. processes must be >0');
+                    process.exit(1);
+                }
                 break;
         }
     } else {
@@ -37,6 +42,10 @@ let onceHandle = [];
 process.stdin.on('data', (data) => {
     inputs = data.toString('utf8').split(/\s+/);
     inputs.filter(item=>item !== '').forEach(item=>onceHandle.push(item));
+    if (process.argv.length <= 2) {
+        process.stdout.write(data);
+        process.exit(0);
+    }
     if (onceHandle.length >= line_num) {
         handler(onceHandle);
         onceHandle = [];
@@ -63,10 +72,23 @@ let handler = (inputArrs) => {
         }*/
         if (!ar.length) continue;
         if (proc_num == 1) {
-            process.stdout.write(child_process.execSync(`${command || 'echo '} ${ar.join(' ')}`));
+            try {
+                let res = child_process.execSync(`${command || 'echo '} ${ar.join(' ')}`);
+                process.stdout.write(res);
+            } catch (err) {
+                process.exit(0);
+            }
             continue;
         }
         let workerProcess = child_process.exec(`${command || 'echo '} ${ar.join(' ')}`, (error, stdout, stderr) => {
+            if (error) {
+                if (error.code == 127) {
+                    console.error(`xargs: ${command}: No such file or directory`);
+                } else {
+                    process.stderr.write(stderr);
+                }
+                error.code != 1 && process.exit(error.code);
+            }
             process.stdout.write(stdout);
         });
         workerProcess.on('close', (code) => {
